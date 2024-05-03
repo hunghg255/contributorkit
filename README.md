@@ -69,8 +69,8 @@ We provide two renderers built-in:
 ### Circles Renderer
 
 <p align="center">
-  <a href="https://cdn.jsdelivr.net/gh/hunghg255/contributorkit/example/contributor.circles.svg">
-    <img src='https://cdn.jsdelivr.net/gh/hunghg255/contributorkit/example/contributor.circles.svg'/>
+  <a href="https://cdn.jsdelivr.net/gh/hunghg255/contributorkit/example/contributor-circles.svg">
+    <img src='https://cdn.jsdelivr.net/gh/hunghg255/contributorkit/example/contributor-circles.svg'/>
   </a>
 </p>
 
