@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "contributorkit",
+    "build:dev": "esno ../src/cli.ts"
+  },
+  "devDependencies": {
+    "contributorkit": "workspace:*"
+  }
+}
