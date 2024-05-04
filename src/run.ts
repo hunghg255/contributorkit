@@ -46,6 +46,9 @@ export async function run(inlineConfig?: Contributorkit, t = consola) {
   let allContributors: Contributor[] = []
   const octokit = new Octokit()
 
+  if (!config.owner || !config.repo)
+    throw new Error('Missing owner or repo in config')
+
   if (!fs.existsSync(cacheFile)) {
     const res = await octokit.request(`GET /repos/${config.owner}/${config.repo}/contributors`, {
       owner: config.owner,
@@ -94,7 +97,6 @@ export async function run(inlineConfig?: Contributorkit, t = consola) {
     }))
   }
   else {
-    // @ts-expect-error
     const renderer = builtinRenderers[fullConfig.renderer || 'tiers']
     await applyRenderer(
       renderer,
@@ -139,9 +141,9 @@ export async function applyRenderer(
     t.success(`${logPrefix} Wrote to ${r(path)}`)
   }
 
-  // if (renderOptions.formats?.includes('png')) {
-  //   const path = join(dir, `${renderOptions.name}.png`)
-  //   await fsp.writeFile(path, await svgToPng(svg))
-  //   t.success(`${logPrefix} Wrote to ${r(path)}`)
-  // }
+  if (renderOptions.formats?.includes('png')) {
+    const path = join(dir, `${renderOptions.name}.png`)
+    await fsp.writeFile(path, await svgToPng(svg))
+    t.success(`${logPrefix} Wrote to ${r(path)}`)
+  }
 }

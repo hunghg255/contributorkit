@@ -17,11 +17,6 @@ cli.command(
   '*',
   'Generate',
   args => args
-    .option('width', {
-      alias: 'w',
-      type: 'number',
-      default: 800,
-    })
     .option('owner', {
       type: 'string',
       requiresArg: true,
@@ -30,16 +25,26 @@ cli.command(
       type: 'string',
       requiresArg: true,
     })
+    .option('width', {
+      alias: 'w',
+      type: 'number',
+      default: 800,
+    })
+    .option('outputDir', {
+      type: 'string',
+      alias: ['out', 'dir'],
+    })
+    .option('renderer', {
+      type: 'string',
+      description: 'tiers | circles',
+      default: 'tiers',
+    })
     .option('name', {
       type: 'string',
     })
     .option('format', {
       type: 'string',
       default: 'svg',
-    })
-    .option('outputDir', {
-      type: 'string',
-      alias: ['out', 'dir'],
     })
     .strict()
     .help(),

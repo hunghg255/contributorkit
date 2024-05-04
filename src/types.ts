@@ -53,6 +53,11 @@ export interface Contributorkit {
   renders?: ContributorkitRenderOptions[]
 
   /**
+   * Configs for render
+   */
+  renderer?: 'tiers' | 'circles'
+
+  /**
    * Padding of image container
    */
   padding?: {
