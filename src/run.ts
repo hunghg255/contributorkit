@@ -56,7 +56,7 @@ export async function run(inlineConfig?: Contributorkit, t = consola) {
       per_page: 100,
     }) as any
 
-    allContributors = res?.data || []
+    allContributors = res?.data?.filter((v: any) => v.type !== 'Bot') || []
 
     t.info('Resolving avatars...')
     await resolveAvatars(allContributors)
