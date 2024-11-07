@@ -1,16 +1,32 @@
-import type { BadgePreset, Contributor } from '../types'
+import type { BadgePreset, Contributor, ImageFormat } from '../types'
+import { resizeImage } from './image'
 
-export function genSvgImage(x: number, y: number, size: number, url: string) {
-  return `<image x="${x}" y="${y}" width="${size}" height="${size}" xlink:href="${url}"/>`
+let id = 0
+export function genSvgImage(
+  x: number,
+  y: number,
+  size: number,
+  radius: number,
+  base64Image: string,
+  imageFormat: ImageFormat,
+) {
+  const cropId = `c${id++}`
+
+  return `
+  <clipPath id="${cropId}">
+    <rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${size * radius}" ry="${size * radius}" />
+  </clipPath>
+  <image x="${x}" y="${y}" width="${size}" height="${size}" href="data:image/${imageFormat};base64,${base64Image}" clip-path="url(#${cropId})"/>`
 }
 
-export function generateBadge(
+export async function generateBadge(
   x: number,
   y: number,
   contributor: Contributor,
   preset: BadgePreset,
+  radius: number,
+  imageFormat: ImageFormat,
 ) {
-  const size = preset.avatar.size
   const { login } = contributor
   let name = (contributor.login).trim()
   const url = contributor.html_url
@@ -22,18 +38,24 @@ export function generateBadge(
       name = `${name.slice(0, preset.name.maxLength - 3)}...`
   }
 
-  const avatarUrl = (size < 50
-    ? contributor.avatarUrlLowRes
-    : size < 90
-      ? contributor.avatarUrlMediumRes
-      : contributor.avatarUrlHighRes
-  ) || contributor.avatar_url
+  const { size } = preset.avatar
+  let avatar = contributor.avatarBuffer! as any
+  if (size < 50)
+    avatar = await resizeImage(avatar, 50, imageFormat)
 
-  return `<a ${url ? `xlink:href="${url}" ` : ''}class="${preset.classes || 'contributorkit-link'}" target="_blank" id="${login}">
+  else if (size < 80)
+    avatar = await resizeImage(avatar, 80, imageFormat)
+
+  else if (imageFormat === 'png')
+    avatar = await resizeImage(avatar, 120, imageFormat)
+
+  const avatarBase64 = avatar.toString('base64')
+
+  return `<a ${url ? `href="${url}" ` : ''}class="${preset.classes || 'contributorkit-link'}" target="_blank" id="${login}">
   ${preset.name
-? `<text x="${x + size / 2}" y="${y + size + 18}" text-anchor="middle" class="${preset.name.classes || 'contributorkit-name'}" fill="${preset.name.color || 'currentColor'}">${encodeHtmlEntities(name)}</text>
+    ? `<text x="${x + size / 2}" y="${y + size + 18}" text-anchor="middle" class="${preset.name.classes || 'contributorkit-name'}" fill="${preset.name.color || 'currentColor'}">${encodeHtmlEntities(name)}</text>
   `
-: ''}${genSvgImage(x, y, size, avatarUrl)}
+    : ''}${await genSvgImage(x, y, size, radius, avatarBase64, imageFormat)}
 </a>`.trim()
 }
 
@@ -63,26 +85,30 @@ export class SvgComposer {
     return this
   }
 
-  addSponsorLine(contributors: Contributor[], preset: BadgePreset) {
+  async addSponsorLine(contributors: Contributor[], preset: BadgePreset) {
     const offsetX = (this.config.width - contributors.length * preset.boxWidth) / 2 + (preset.boxWidth - preset.avatar.size) / 2
-    this.body += contributors
-      .map((s, i) => {
+    const r = await Promise.all(contributors
+      .map(async (s, i) => {
         const x = offsetX + preset.boxWidth * i
         const y = this.height
-        return generateBadge(x, y, s, preset)
-      })
-      .join('\n')
+        const radius = 0.5
+
+        return generateBadge(x, y, s, preset, radius, this.config.imageFormat)
+      }))
+
+    this.body += r.join('\n')
+
     this.height += preset.boxHeight
   }
 
-  addSponsorGrid(contributors: Contributor[], preset: BadgePreset) {
+  async addSponsorGrid(contributors: Contributor[], preset: BadgePreset) {
     const perLine = Math.floor((this.config.width - (preset.container?.sidePadding || 0) * 2) / preset.boxWidth)
 
-    Array.from({ length: Math.ceil(contributors.length / perLine) })
-      .fill(0)
-      .forEach((_, i) => {
-        this.addSponsorLine(contributors.slice(i * perLine, (i + 1) * perLine), preset)
-      })
+    const arr = Array.from({ length: Math.ceil(contributors.length / perLine) })
+
+    for (let i = 0; i < arr.length; i++) {
+      await this.addSponsorLine(contributors.slice(i * perLine, (i + 1) * perLine), preset)
+    }
 
     return this
   }

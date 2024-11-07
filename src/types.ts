@@ -21,13 +21,17 @@ export interface Contributor {
   type: 'User' | 'Organization'
   site_admin: boolean
   contributions: number
-  avatarBuffer?: string
-  avatarUrlHighRes?: string
-  avatarUrlMediumRes?: string
-  avatarUrlLowRes?: string
+  avatarBuffer?: Buffer
+  // avatarUrlHighRes?: string
+  // avatarUrlMediumRes?: string
+  // avatarUrlLowRes?: string
 }
 
-export type OutputFormat = 'svg' | 'png'
+export const outputFormats = ['svg', 'png', 'webp', 'json'] as const
+
+export type OutputFormat = typeof outputFormats[number]
+
+export type ImageFormat = 'png' | 'webp'
 
 export interface Contributorkit {
   owner: string
@@ -219,7 +223,14 @@ export interface ContributorkitRenderOptions {
   /**
    * Hook to get or modify the SVG before writing.
    */
-  // onSvgGenerated?: (svg: string) => PromiseLike<string | void | undefined | null> | string | void | undefined | null
+  onSvgGenerated?: (svg: string) => PromiseLike<string | void | undefined | null> | string | void | undefined | null
+
+  /**
+   * Format of embedded images
+   *
+   * @default 'webp'
+   */
+  imageFormat?: ImageFormat
 }
 
 export interface ContributorkitRenderer {

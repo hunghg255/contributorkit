@@ -1,3 +1,4 @@
+/* eslint-disable node/prefer-global/buffer */
 /* eslint-disable ts/ban-ts-comment */
 import { dirname, join, relative, resolve } from 'node:path'
 import process from 'node:process'
@@ -8,9 +9,10 @@ import c from 'picocolors'
 import { Octokit } from '@octokit/core'
 import { version } from '../package.json'
 import { loadConfig } from './configs'
-import { resolveAvatars, svgToPng } from './processing/image'
+import { resolveAvatars, svgToPng, svgToWebp } from './processing/image'
 import { builtinRenderers } from './renders'
-import type { Contributor, Contributorkit, ContributorkitRenderOptions, ContributorkitRenderer } from './types'
+import { type Contributor, type Contributorkit, type ContributorkitRenderOptions, type ContributorkitRenderer, outputFormats } from './types'
+import { parseCache, stringifyCache } from './cache'
 
 export {
   // default
@@ -25,6 +27,18 @@ function r(path: string) {
   return `./${relative(process.cwd(), path)}`
 }
 
+// function normalizeReplacements(replaces: ContributorkitMainConfig['replaceLinks']) {
+//   const array = (Array.isArray(replaces) ? replaces : [replaces]).filter(notNullish)
+//   const entries = array.map((i) => {
+//     if (!i)
+//       return []
+//     if (typeof i === 'function')
+//       return [i]
+//     return Object.entries(i) as [string, string][]
+//   }).flat()
+//   return entries
+// }
+
 export async function run(inlineConfig?: Contributorkit, t = consola) {
   t.log(`\n${c.magenta(c.bold('ContributorKit'))} ${c.dim(`v${version}`)}\n`)
 
@@ -36,12 +50,15 @@ export async function run(inlineConfig?: Contributorkit, t = consola) {
   if (config.renders?.length) {
     const names = new Set<string>()
     config.renders.forEach((renderOptions, idx) => {
-      const name = renderOptions.name || 'sponsors'
+      const name = renderOptions.name || 'contributors'
       if (names.has(name))
         throw new Error(`Duplicate render name: ${name} at index ${idx}`)
       names.add(name)
     })
   }
+
+  // const linksReplacements = normalizeReplacements(config.replaceLinks)
+  // const avatarsReplacements = normalizeReplacements(config.replaceAvatars)
 
   let allContributors: Contributor[] = []
   const octokit = new Octokit()
@@ -63,10 +80,11 @@ export async function run(inlineConfig?: Contributorkit, t = consola) {
     t.success('Avatars resolved')
 
     await fsp.mkdir(dirname(cacheFile), { recursive: true })
-    await fsp.writeFile(cacheFile, JSON.stringify(allContributors, null, 2))
+    await fsp.writeFile(cacheFile, stringifyCache(allContributors))
   }
   else {
-    allContributors = JSON.parse(await fsp.readFile(cacheFile, 'utf-8'))
+    allContributors = parseCache(await fsp.readFile(cacheFile, 'utf-8'))
+
     t.success(`Loaded from cache ${r(cacheFile)}`)
   }
 
@@ -131,19 +149,72 @@ export async function applyRenderer(
   // if (renderOptions.filter)
   //   contributors = contributors.filter(s => renderOptions.filter(s, sponsors) !== false)
 
+  if (!renderOptions.imageFormat)
+    renderOptions.imageFormat = 'webp'
+
   t.info(`${logPrefix} Composing SVG...`)
-  const svg = await renderer.renderSVG(renderOptions, contributors)
-  // svg = await renderOptions.onSvgGenerated?.(svg) || svg
 
-  if (renderOptions.formats?.includes('svg')) {
-    const path = join(dir, `${renderOptions.name}.svg`)
-    await fsp.writeFile(path, svg, 'utf-8')
-    t.success(`${logPrefix} Wrote to ${r(path)}`)
+  const processingSvg = (async () => {
+    let svgWebp = await renderer.renderSVG(renderOptions, contributors)
+
+    if (renderOptions.onSvgGenerated)
+      svgWebp = await renderOptions.onSvgGenerated(svgWebp) || svgWebp
+
+    return svgWebp
+  })()
+
+  if (renderOptions.formats) {
+    let svgPng: Promise<string> | undefined
+
+    await Promise.all([
+      renderOptions.formats.map(async (format) => {
+        if (!outputFormats.includes(format))
+          throw new Error(`Unsupported format: ${format}`)
+
+        const path = join(dir, `${renderOptions.name}.${format}`)
+
+        let data: string | Buffer
+
+        if (format === 'svg')
+          data = await processingSvg
+
+        if (format === 'png' || format === 'webp') {
+          if (!svgPng) {
+            // Sharp can't render embedded Webp so re-generate with png
+            // https://github.com/lovell/sharp/issues/4254
+            svgPng = renderer.renderSVG({
+              ...renderOptions,
+              imageFormat: 'png',
+            }, contributors)
+          }
+
+          if (format === 'png')
+            data = await svgToPng(await svgPng)
+
+          if (format === 'webp')
+            data = await svgToWebp(await svgPng)
+        }
+
+        await fsp.writeFile(path, data as any)
+
+        t.success(`${logPrefix} Wrote to ${r(path)}`)
+      }),
+    ])
   }
 
-  if (renderOptions.formats?.includes('png')) {
-    const path = join(dir, `${renderOptions.name}.png`)
-    await fsp.writeFile(path, await svgToPng(svg))
-    t.success(`${logPrefix} Wrote to ${r(path)}`)
-  }
+  // t.info(`${logPrefix} Composing SVG...`)
+  // const svg = await renderer.renderSVG(renderOptions, contributors)
+  // // svg = await renderOptions.onSvgGenerated?.(svg) || svg
+
+  // if (renderOptions.formats?.includes('svg')) {
+  //   const path = join(dir, `${renderOptions.name}.svg`)
+  //   await fsp.writeFile(path, svg, 'utf-8')
+  //   t.success(`${logPrefix} Wrote to ${r(path)}`)
+  // }
+
+  // if (renderOptions.formats?.includes('png')) {
+  //   const path = join(dir, `${renderOptions.name}.png`)
+  //   await fsp.writeFile(path, await svgToPng(svg))
+  //   t.success(`${logPrefix} Wrote to ${r(path)}`)
+  // }
 }

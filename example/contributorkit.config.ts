@@ -1,4 +1,4 @@
-import { defineConfig, tierPresets } from 'sponsorkit'
+import { defineConfig, tierPresets } from 'contributorkit'
 
 export default defineConfig({
   // includePrivate: true,
@@ -59,18 +59,18 @@ export default defineConfig({
   //   },
   // ],
   outputDir: '.',
-  owner: 'vercel',
-  repo: 'next.js',
+  owner: 'facebook',
+  repo: 'react',
   renders: [
     {
       name: 'contributor',
       width: 800,
-      formats: ['svg', 'png'],
+      formats: ['svg', 'png', 'webp'],
     },
     {
       name: 'contributor-wide',
       width: 1000,
-      formats: ['svg'],
+      formats: ['svg', 'png', 'webp'],
     },
     {
       renderer: 'circles',

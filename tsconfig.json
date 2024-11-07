@@ -5,7 +5,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "paths": {
-      "sponsorkit": [
+      "contributorkit": [
         "./src/index.ts"
       ]
     },

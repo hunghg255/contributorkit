@@ -79,5 +79,5 @@ dist
 
 # IDE
 .idea
-sponsorkit
+contributorkit
 .DS_Store

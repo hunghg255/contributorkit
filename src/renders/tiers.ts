@@ -2,17 +2,6 @@ import type { Contributor, Contributorkit, ContributorkitRenderer, Tier, TierPar
 import { SvgComposer } from '../processing/svg'
 import { tierPresets } from '../configs/tier-presets'
 
-export const tiersRenderer: ContributorkitRenderer = {
-  name: 'contributorkit:tiers',
-  async renderSVG(config, contributors: Contributor[]) {
-    const composer = new SvgComposer(config)
-    // eslint-disable-next-line ts/ban-ts-comment
-    // @ts-expect-error
-    await (config.customComposer || tiersComposer)(composer, contributors, config)
-    return composer.generateSvg()
-  },
-}
-
 function partitionTiers(contributions: Contributor[], tiers: Tier[]): TierPartition[] {
   const tierMappings = tiers!.map<TierPartition>(tier => ({
     contribution: tier.contribution ?? 0,
@@ -40,31 +29,41 @@ export async function tiersComposer(composer: SvgComposer, contributors: Contrib
 
   composer.addSpan(config.padding?.top ?? 20)
 
-  tierPartitions
-    .forEach(({ tier: t, contributions }) => {
-      // t.composeBefore?.(composer, contributions, config)
-      // if (t.compose) {
-      //   t.compose(composer, contributions, config)
-      // }
-      // else {
-      const preset = t.preset || tierPresets.base
-      if (contributions.length && preset.avatar.size) {
-        const paddingTop = t.padding?.top ?? 20
-        const paddingBottom = t.padding?.bottom ?? 10
-        if (paddingTop)
-          composer.addSpan(paddingTop)
-        if (t.title) {
-          composer
-            .addTitle(t.title)
-            .addSpan(5)
-        }
-        composer.addSponsorGrid(contributions, preset)
-        if (paddingBottom)
-          composer.addSpan(paddingBottom)
-        // }
+  for (const { tier: t, contributions } of tierPartitions) {
+    // t.composeBefore?.(composer, contributions, config)
+    // if (t.compose) {
+    //   t.compose(composer, contributions, config)
+    // }
+    // else {
+    const preset = t.preset || tierPresets.base
+    if (contributions.length && preset.avatar.size) {
+      const paddingTop = t.padding?.top ?? 20
+      const paddingBottom = t.padding?.bottom ?? 10
+      if (paddingTop)
+        composer.addSpan(paddingTop)
+      if (t.title) {
+        composer
+          .addTitle(t.title)
+          .addSpan(5)
       }
-      // t.composeAfter?.(composer, contributions, config)
-    })
+      await composer.addSponsorGrid(contributions, preset)
+      if (paddingBottom)
+        composer.addSpan(paddingBottom)
+    }
+    // }
+    // t.composeAfter?.(composer, contributions, config)
+  }
 
   composer.addSpan(config.padding?.bottom ?? 20)
+}
+
+export const tiersRenderer: ContributorkitRenderer = {
+  name: 'contributorkit:tiers',
+  async renderSVG(config, contributors: Contributor[]) {
+    const composer = new SvgComposer(config)
+    // eslint-disable-next-line ts/ban-ts-comment
+    // @ts-expect-error
+    await (config.customComposer || tiersComposer)(composer, contributors, config)
+    return composer.generateSvg()
+  },
 }

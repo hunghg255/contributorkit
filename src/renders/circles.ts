@@ -1,6 +1,5 @@
 import type { Contributor, ContributorkitRenderer } from '../types'
 import { SvgComposer, generateBadge } from '../processing/svg'
-import { base64ToArrayBuffer, pngToDataUri, round } from '../processing/image'
 
 export const circlesRenderer: ContributorkitRenderer = {
   name: 'contributorkit:circles',
@@ -33,10 +32,10 @@ export const circlesRenderer: ContributorkitRenderer = {
     const circles = p(root as any).descendants().slice(1)
 
     for (const circle of circles) {
-      composer.addRaw(generateBadge(
+      composer.addRaw(await generateBadge(
         circle.x - circle.r,
         circle.y - circle.r,
-        await getRoundedAvatars(circle.data),
+        circle.data,
         {
           name: false,
           boxHeight: circle.r * 2,
@@ -45,6 +44,8 @@ export const circlesRenderer: ContributorkitRenderer = {
             size: circle.r * 2,
           },
         },
+        0.5,
+        config.imageFormat,
       ))
     }
 
@@ -58,18 +59,4 @@ function lerp(a: number, b: number, t: number) {
   if (t < 0)
     return a
   return a + (b - a) * t
-}
-
-async function getRoundedAvatars(contributor: Contributor) {
-  if (!contributor.avatarBuffer || contributor.type === 'User')
-    return contributor
-
-  const data = base64ToArrayBuffer(contributor.avatarBuffer)
-  /// keep-sorted
-  return {
-    ...contributor,
-    avatarUrlHighRes: pngToDataUri(await round(data, 0.5, 120)),
-    avatarUrlLowRes: pngToDataUri(await round(data, 0.5, 50)),
-    avatarUrlMediumRes: pngToDataUri(await round(data, 0.5, 80)),
-  }
 }
