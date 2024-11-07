@@ -1,7 +1,7 @@
 {
   "name": "contributorkit",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "packageManager": "pnpm@9.12.3",
   "description": "Toolkit for generating contributors images",
   "author": "Hung <giahung197bg@gmail.com>",
